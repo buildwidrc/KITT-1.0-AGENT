@@ -31,9 +31,11 @@ app.get('/api/health', (req, res) => {
 });
 
 // AI Agent Conversation & Project Modification Endpoint
-app.post('/api/agent/chat', async (req, res) => {
+app.post(['/api/agent', '/api/agent/chat'], async (req, res) => {
   try {
-    const { message, project, history } = req.body;
+    const message = req.body.message || req.body.prompt || '';
+    const project = req.body.project || req.body.projectContext || {};
+    const history = req.body.history || [];
     const ai = getGenAI();
 
     const lower = (message || '').toLowerCase();
@@ -43,9 +45,10 @@ app.post('/api/agent/chat', async (req, res) => {
     let planSummary: any[] = [];
     let responseText = '';
 
-    if (lower.includes('resistor') && (lower.includes('add') || lower.includes('before'))) {
+    if (lower.includes('resistor') && (lower.includes('add') || lower.includes('before') || lower.includes('insert'))) {
       plannedActions.push({
         type: 'create_component',
+        componentType: 'resistor',
         payload: {
           type: 'resistor',
           name: 'R_PROT',
@@ -76,6 +79,7 @@ app.post('/api/agent/chat', async (req, res) => {
     } else if (lower.includes('esp32') && lower.includes('replace')) {
       plannedActions.push({
         type: 'create_component',
+        componentType: 'esp32',
         payload: {
           type: 'esp32',
           name: 'U1',
@@ -107,8 +111,8 @@ The user is building or modifying an electronics project.
 Current project state summary: ${JSON.stringify({
           name: project?.name,
           componentsCount: project?.components?.length,
-          components: project?.components?.map((c: any) => `${c.label} (${c.type})`),
-          wiresCount: project?.wires?.length,
+          components: project?.components?.map((c: any) => `${c.label || c.name} (${c.type})`),
+          wiresCount: project?.wires?.length || project?.wiresCount,
         })}
 
 User message: "${message}"
@@ -139,7 +143,10 @@ Respond concisely and professionally as KITT AI. Explain your engineering decisi
 
     res.json({
       message: responseText,
+      explanation: responseText,
+      text: responseText,
       plannedActions,
+      actions: plannedActions,
       plan: planSummary,
     });
   } catch (error: any) {
