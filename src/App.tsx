@@ -145,7 +145,7 @@ export const App: React.FC = () => {
     setViewMode(initialView);
     setActiveTab('canvas');
 
-    const lower = prompt.toLowerCase();
+    const lower = (prompt || '').toLowerCase();
     if (lower.includes('water') || lower.includes('plant') || lower.includes('esp32') || lower.includes('soil')) {
       handleLoadPreset('plant_watering');
     } else {
@@ -357,7 +357,7 @@ export const App: React.FC = () => {
       }
     } catch {
       // Client-side intelligent fallback agent
-      const lower = text.toLowerCase();
+      const lower = (text || '').toLowerCase();
       let responseContent = '';
 
       if (lower.includes('resistor') && (lower.includes('add') || lower.includes('insert'))) {
@@ -375,7 +375,7 @@ export const App: React.FC = () => {
           ...prev,
           firmware: {
             ...prev.firmware,
-            code: prev.firmware.code.replace('3000', '5000'),
+            code: (prev.firmware?.code || '').replace('3000', '5000'),
           },
         }));
       } else if (lower.includes('why') || lower.includes('explain')) {

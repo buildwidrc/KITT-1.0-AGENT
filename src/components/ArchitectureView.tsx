@@ -31,8 +31,10 @@ export const ArchitectureView: React.FC<ArchitectureViewProps> = ({
 
         {/* Subsystem Flow Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {architecture.map((subsystem, idx) => {
-            const mappedComps = components.filter((c) => subsystem.componentIds.includes(c.id));
+          {(architecture || []).map((subsystem, idx) => {
+            const mappedComps = (components || []).filter((c) =>
+              (subsystem.componentIds || []).includes(c.id)
+            );
 
             return (
               <div

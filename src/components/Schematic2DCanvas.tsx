@@ -153,7 +153,7 @@ export const Schematic2DCanvas: React.FC<Schematic2DCanvasProps> = ({
         const pin = comp?.pins.find((p) => p.id === pinId);
         let wireColor = '#06b6d4'; // default cyan
         if (pin?.type === 'vcc' || pinId === '5V' || pinId === 'VIN' || pinId === 'anode') wireColor = '#ef4444';
-        else if (pin?.type === 'gnd' || pinId.includes('GND') || pinId === 'cathode') wireColor = '#1e293b';
+        else if (pin?.type === 'gnd' || (pinId || '').includes('GND') || pinId === 'cathode') wireColor = '#1e293b';
         else if (pin?.type === 'pwm') wireColor = '#a855f7';
         else if (pin?.type === 'analog') wireColor = '#3b82f6';
 
@@ -451,8 +451,8 @@ export const Schematic2DCanvas: React.FC<Schematic2DCanvasProps> = ({
                   const pinState = simulation?.pinStates[`${comp.id}.${pin.id}`];
 
                   let pinColor = '#94a3b8';
-                  if (pin.type === 'vcc' || pin.id.includes('5V') || pin.id === 'VIN') pinColor = '#ef4444';
-                  else if (pin.type === 'gnd' || pin.id.includes('GND')) pinColor = '#1e293b';
+                  if (pin.type === 'vcc' || (pin.id || '').includes('5V') || pin.id === 'VIN') pinColor = '#ef4444';
+                  else if (pin.type === 'gnd' || (pin.id || '').includes('GND')) pinColor = '#1e293b';
                   else if (pin.type === 'pwm') pinColor = '#c084fc';
                   else if (pin.type === 'analog') pinColor = '#38bdf8';
 

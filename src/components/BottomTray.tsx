@@ -345,14 +345,14 @@ export const BottomTray: React.FC<BottomTrayProps> = ({
               <div className="text-[10px] text-slate-500 border-b border-[#1f2738] pb-1 mb-1">
                 --- Microcontroller UART Serial Interface (Baud: 115200) ---
               </div>
-              {serialLogs.map((log, idx) => (
+              {(serialLogs || []).map((log, idx) => (
                 <div key={idx} className="flex gap-2">
                   <span className="text-slate-600 select-none">[{idx + 1}]</span>
                   <span
                     className={
-                      log.includes('[EVENT]')
+                      (log || '').includes('[EVENT]')
                         ? 'text-amber-400 font-bold'
-                        : log.includes('[STATE]')
+                        : (log || '').includes('[STATE]')
                         ? 'text-cyan-300'
                         : 'text-slate-300'
                     }

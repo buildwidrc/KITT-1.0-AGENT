@@ -66,8 +66,15 @@ export function runSimulationStep(
   });
 
   // 3. Evaluate MCU Logic & Firmware State Machine
-  const isTrafficProject = project.id.includes('traffic') || project.components.some((c) => c.name.includes('Traffic') || c.label.includes('Stop'));
-  const isPlantProject = project.id.includes('plant') || project.components.some((c) => c.type === 'soil_sensor' || c.type === 'water_pump');
+  const projectId = project?.id || '';
+  const isTrafficProject =
+    projectId.includes('traffic') ||
+    (project?.components || []).some(
+      (c) => (c?.name || '').includes('Traffic') || (c?.label || '').includes('Stop')
+    );
+  const isPlantProject =
+    projectId.includes('plant') ||
+    (project?.components || []).some((c) => c?.type === 'soil_sensor' || c?.type === 'water_pump');
 
   if (isTrafficProject) {
     // Check pedestrian button
@@ -217,7 +224,7 @@ export function runSimulationStep(
         const isPowered = project.wires.some(
           (w) =>
             (w.from.componentId === comp.id || w.to.componentId === comp.id) &&
-            (w.color.includes('red') || w.color.includes('green') || w.color.includes('yellow'))
+            ((w.color || '').includes('red') || (w.color || '').includes('green') || (w.color || '').includes('yellow'))
         );
         componentStates[comp.id] = {
           state: isPowered ? 'on' : 'off',
