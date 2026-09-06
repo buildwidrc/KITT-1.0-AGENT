@@ -1,0 +1,8 @@
+{
+  "name": "KITT AI",
+  "description": "AI-native electronics creation environment for generating, simulating, and prototyping 2D and 3D circuits with synchronized project models and firmware.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
