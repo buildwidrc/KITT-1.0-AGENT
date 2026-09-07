@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Sparkles, Cpu, Layers, CheckCircle2, ArrowRight, Zap, X } from 'lucide-react';
+import { Cpu, Layers, CheckCircle2, ArrowRight, Zap, X, RefreshCw } from 'lucide-react';
 import { ViewMode } from '../types';
 
 interface NewProjectModalProps {
@@ -58,7 +58,7 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
         <div className="px-6 py-4 border-b border-[#232a3b] flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-violet-600 to-indigo-500 flex items-center justify-center shadow-md shadow-violet-900/40">
-              <Sparkles className="w-4 h-4 text-white" />
+              <Cpu className="w-4 h-4 text-white" />
             </div>
             <div>
               <h2 className="text-sm font-bold text-slate-100 font-mono">NEW KITT AI INVENTION</h2>
@@ -179,7 +179,7 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
                       {isDone ? (
                         <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
                       ) : isCurrent ? (
-                        <Sparkles className="w-4 h-4 text-violet-400 animate-spin shrink-0" />
+                        <RefreshCw className="w-4 h-4 text-violet-400 animate-spin shrink-0" />
                       ) : (
                         <div className="w-4 h-4 rounded-full border border-slate-700 shrink-0" />
                       )}

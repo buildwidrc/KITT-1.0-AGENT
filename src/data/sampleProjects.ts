@@ -1,6 +1,37 @@
 import { CanonicalProject, CircuitComponent, CircuitWire } from '../types';
 import { createComponentInstance } from './componentDefinitions';
 
+export function createEmptyProject(): CanonicalProject {
+  return {
+    id: `proj_${Date.now()}`,
+    name: 'Clean Circuit Workspace',
+    description: 'Empty schematic workspace ready for circuit design.',
+    version: 1,
+    components: [],
+    wires: [],
+    firmware: {
+      target: 'arduino_uno',
+      code: `// KITT AI Clean Workspace Firmware
+void setup() {
+  Serial.begin(115200);
+  Serial.println("[KITT] Workspace clean and ready.");
+}
+
+void loop() {
+  // Add your loop logic or ask KITT AI to synthesize circuits
+  delay(100);
+}`,
+      isCompiled: false,
+      compileLog: '',
+      serialLogs: [],
+    },
+    architecture: [],
+    viewMode: '2d',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+}
+
 export function createTrafficLightProject(): CanonicalProject {
   const arduino = createComponentInstance('arduino_uno', 'U1', 'Arduino Uno R3', 180, 240, [-2.5, 0, 0]);
   
@@ -318,3 +349,113 @@ void loop() {
 
 export const TRAFFIC_LIGHT_PROJECT: CanonicalProject = createTrafficLightProject();
 export const PLANT_WATERING_PROJECT: CanonicalProject = createPlantWateringProject();
+
+export function createLogicGateProject(): CanonicalProject {
+  const switchA = createComponentInstance('logic_switch', 'SW_A', 'Input Switch A', 140, 170, [-2.2, 0.2, -1.0], {
+    state: 1, // Start with A=1
+  });
+
+  const switchB = createComponentInstance('logic_switch', 'SW_B', 'Input Switch B', 140, 330, [-2.2, 0.2, 1.0], {
+    state: 0, // Start with B=0
+  });
+
+  const xorGate = createComponentInstance('xor_gate', 'U_XOR', 'XOR Gate (Sum)', 400, 170, [0.0, 0.3, -1.0]);
+
+  const andGate = createComponentInstance('and_gate', 'U_AND', 'AND Gate (Carry)', 400, 330, [0.0, 0.3, 1.0]);
+
+  const probeSum = createComponentInstance('logic_probe', 'P_SUM', 'Sum Probe (S)', 650, 170, [2.4, 0.2, -1.0], {
+    value: 1,
+  });
+
+  const probeCarry = createComponentInstance('logic_probe', 'P_CARRY', 'Carry Probe (C)', 650, 330, [2.4, 0.2, 1.0], {
+    value: 0,
+  });
+
+  const components: CircuitComponent[] = [
+    switchA,
+    switchB,
+    xorGate,
+    andGate,
+    probeSum,
+    probeCarry,
+  ];
+
+  const wires: CircuitWire[] = [
+    // Switch A -> XOR in_a & AND in_a
+    { id: 'w_a_xor', from: { componentId: switchA.id, pinId: 'out' }, to: { componentId: xorGate.id, pinId: 'in_a' }, color: '#38bdf8' },
+    { id: 'w_a_and', from: { componentId: switchA.id, pinId: 'out' }, to: { componentId: andGate.id, pinId: 'in_a' }, color: '#38bdf8' },
+
+    // Switch B -> XOR in_b & AND in_b
+    { id: 'w_b_xor', from: { componentId: switchB.id, pinId: 'out' }, to: { componentId: xorGate.id, pinId: 'in_b' }, color: '#f59e0b' },
+    { id: 'w_b_and', from: { componentId: switchB.id, pinId: 'out' }, to: { componentId: andGate.id, pinId: 'in_b' }, color: '#f59e0b' },
+
+    // XOR out_y -> Sum Probe
+    { id: 'w_xor_sum', from: { componentId: xorGate.id, pinId: 'out_y' }, to: { componentId: probeSum.id, pinId: 'in' }, color: '#10b981' },
+
+    // AND out_y -> Carry Probe
+    { id: 'w_and_carry', from: { componentId: andGate.id, pinId: 'out_y' }, to: { componentId: probeCarry.id, pinId: 'in' }, color: '#a855f7' },
+  ];
+
+  return {
+    id: 'proj_logic_gates',
+    name: 'Digital Half-Adder (ANSI/IEEE Gates)',
+    description: 'Hardware logic gate synthesizer implementing a 1-bit binary Half Adder with standard ANSI/IEEE distinctive gate symbols: XOR for Sum and AND for Carry.',
+    components,
+    wires,
+    firmware: {
+      target: 'arduino_uno',
+      code: `// Digital Logic Gate Truth Table Simulator
+// Half-Adder:
+// A=0, B=0 => SUM=0, CARRY=0
+// A=0, B=1 => SUM=1, CARRY=0
+// A=1, B=0 => SUM=1, CARRY=0
+// A=1, B=1 => SUM=0, CARRY=1
+
+void setup() {
+  Serial.begin(115200);
+  Serial.println("[LOGIC CORE] ANSI/IEEE Digital Gate Simulation Active");
+}
+
+void loop() {
+  // Combinational propagation runs deterministically in real time
+  delay(100);
+}`,
+      isCompiled: true,
+      compileLog: 'Digital Logic Core compiled successfully: 0 warnings, 0 errors.',
+      serialLogs: ['[LOGIC CORE] ANSI/IEEE Digital Gate Simulation Active'],
+    },
+    version: 1,
+    architecture: [
+      {
+        id: 'arch_inputs',
+        name: 'Digital Input Conditioning',
+        role: 'Dual SPDT Binary Logic Switches (A & B)',
+        status: 'nominal',
+        componentIds: [switchA.id, switchB.id],
+        description: 'Produces clean 0V (LOW) and 5V (HIGH) logic levels with zero bounce.',
+      },
+      {
+        id: 'arch_sum',
+        name: 'Binary Sum Computation',
+        role: 'Modulo-2 Addition (XOR: S = A ⊕ B)',
+        status: 'active',
+        componentIds: [xorGate.id, probeSum.id],
+        description: 'SN74LS86 Quad XOR computing single-bit arithmetic sum.',
+      },
+      {
+        id: 'arch_carry',
+        name: 'Carry Bit Generation',
+        role: 'Arithmetic Carry Output (AND: C = A · B)',
+        status: 'active',
+        componentIds: [andGate.id, probeCarry.id],
+        description: 'SN74LS08 Quad AND gate asserting carry-out on dual-high inputs.',
+      },
+    ],
+    viewMode: '2d',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+export const LOGIC_GATE_PROJECT: CanonicalProject = createLogicGateProject();
+

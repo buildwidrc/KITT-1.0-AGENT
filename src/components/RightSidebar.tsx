@@ -1,35 +1,22 @@
 import React, { useState } from 'react';
 import {
-  Send,
-  Sparkles,
-  Bot,
-  User,
   Sliders,
   CheckCircle2,
   AlertTriangle,
-  Play,
-  ArrowRight,
   Info,
-  Layers,
   Zap,
   Trash2,
   RotateCw,
-  Clock,
   ShieldCheck,
   ShieldAlert,
 } from 'lucide-react';
 import {
-  AIMessage,
-  AIPlanStep,
   CircuitComponent,
   DrcIssue,
   SimulationMeasurement,
 } from '../types';
 
 interface RightSidebarProps {
-  messages: AIMessage[];
-  onSendMessage: (text: string) => void;
-  isAiProcessing: boolean;
   selectedComponent: CircuitComponent | null;
   onUpdateSelectedComponent: (updates: Partial<CircuitComponent>) => void;
   onDeleteSelectedComponent: () => void;
@@ -37,13 +24,9 @@ interface RightSidebarProps {
   drcIssues: DrcIssue[];
   onFixDrcIssue: (issue: DrcIssue) => void;
   simulation: SimulationMeasurement | null;
-  onApplyPendingActions: (messageId: string) => void;
 }
 
 export const RightSidebar: React.FC<RightSidebarProps> = ({
-  messages,
-  onSendMessage,
-  isAiProcessing,
   selectedComponent,
   onUpdateSelectedComponent,
   onDeleteSelectedComponent,
@@ -51,53 +34,28 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
   drcIssues,
   onFixDrcIssue,
   simulation,
-  onApplyPendingActions,
 }) => {
-  const [activeTab, setActiveTab] = useState<'agent' | 'properties' | 'drc'>('agent');
-  const [inputText, setInputText] = useState('');
-
-  const handleSend = (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    if (!inputText.trim() || isAiProcessing) return;
-    onSendMessage(inputText.trim());
-    setInputText('');
-  };
-
-  const handleQuickAction = (promptText: string) => {
-    onSendMessage(promptText);
-  };
+  const [activeTab, setActiveTab] = useState<'properties' | 'drc'>('properties');
 
   return (
     <aside className="w-80 bg-[#11141a] border-l border-[#232936] flex flex-col h-full shrink-0 z-20 select-none">
-      {/* Tab Switcher */}
-      <div className="grid grid-cols-3 p-1.5 bg-[#0c0e13] border-b border-[#232936] gap-1">
-        <button
-          onClick={() => setActiveTab('agent')}
-          className={`py-1.5 px-2 text-[11px] font-semibold font-mono rounded flex items-center justify-center gap-1.5 transition-colors ${
-            activeTab === 'agent'
-              ? 'bg-violet-600 text-white shadow-sm'
-              : 'text-slate-400 hover:text-slate-200'
-          }`}
-        >
-          <Bot className="w-3.5 h-3.5" />
-          <span>KITT AI</span>
-        </button>
-
+      {/* Tab Switcher: Component Inspector & DRC Diagnostics */}
+      <div className="grid grid-cols-2 p-1.5 bg-[#0c0e13] border-b border-[#232936] gap-1 shrink-0">
         <button
           onClick={() => setActiveTab('properties')}
-          className={`py-1.5 px-2 text-[11px] font-semibold font-mono rounded flex items-center justify-center gap-1.5 transition-colors ${
+          className={`py-1.5 px-2 text-[11px] font-semibold font-mono rounded flex items-center justify-center gap-1.5 transition-colors cursor-pointer ${
             activeTab === 'properties'
               ? 'bg-[#1e2533] text-violet-300 border border-violet-500/30'
               : 'text-slate-400 hover:text-slate-200'
           }`}
         >
           <Sliders className="w-3.5 h-3.5" />
-          <span>Inspect</span>
+          <span>Inspector</span>
         </button>
 
         <button
           onClick={() => setActiveTab('drc')}
-          className={`py-1.5 px-2 text-[11px] font-semibold font-mono rounded flex items-center justify-center gap-1.5 transition-colors ${
+          className={`py-1.5 px-2 text-[11px] font-semibold font-mono rounded flex items-center justify-center gap-1.5 transition-colors cursor-pointer ${
             activeTab === 'drc'
               ? 'bg-[#1e2533] text-amber-300 border border-amber-500/30'
               : 'text-slate-400 hover:text-slate-200'
@@ -112,143 +70,7 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
         </button>
       </div>
 
-      {/* TAB 1: KITT AI AGENT CHAT & ACTION STREAM */}
-      {activeTab === 'agent' && (
-        <div className="flex flex-col flex-1 overflow-hidden">
-          {/* Messages Stream */}
-          <div className="flex-1 overflow-y-auto p-3 space-y-3.5">
-            {messages.map((msg) => (
-              <div
-                key={msg.id}
-                className={`flex flex-col text-xs leading-relaxed ${
-                  msg.role === 'user' ? 'items-end' : 'items-start'
-                }`}
-              >
-                <div className="flex items-center gap-1.5 mb-1 text-[10px] text-slate-400 font-mono">
-                  {msg.role === 'user' ? (
-                    <>
-                      <span>Engineer</span>
-                      <User className="w-3 h-3 text-slate-300" />
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="w-3 h-3 text-violet-400" />
-                      <span className="font-semibold text-violet-400">KITT AI Agent</span>
-                    </>
-                  )}
-                  <span className="text-slate-600">{msg.timestamp}</span>
-                </div>
-
-                <div
-                  className={`p-3 rounded-lg max-w-[95%] ${
-                    msg.role === 'user'
-                      ? 'bg-violet-600/30 border border-violet-500/40 text-slate-100 rounded-tr-none'
-                      : 'bg-[#161b24] border border-[#262f40] text-slate-200 rounded-tl-none shadow-md'
-                  }`}
-                >
-                  <p className="whitespace-pre-wrap">{msg.content}</p>
-
-                  {/* AI Engineering Plan Steps if present */}
-                  {msg.plan && msg.plan.length > 0 && (
-                    <div className="mt-2.5 pt-2.5 border-t border-[#232c3d] space-y-1.5">
-                      <span className="text-[10px] font-mono font-bold text-slate-400 tracking-wider">
-                        ENGINEERING EXECUTION PLAN:
-                      </span>
-                      {msg.plan.map((step, idx) => (
-                        <div key={idx} className="flex items-start gap-1.5 text-[11px] text-slate-300">
-                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
-                          <div>
-                            <span className="font-semibold text-slate-200">{step.title}: </span>
-                            <span className="text-slate-400">{step.detail}</span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* AI Action Preview with Apply Confirmation button if pending */}
-                  {msg.plannedActions && msg.plannedActions.length > 0 && msg.status === 'pending_confirmation' && (
-                    <div className="mt-3 p-2.5 bg-violet-950/30 border border-violet-500/30 rounded-md">
-                      <div className="flex items-center gap-1 text-[11px] font-mono text-violet-300 font-semibold mb-1">
-                        <Zap className="w-3.5 h-3.5 text-amber-400" />
-                        <span>Proposed Modifications ({msg.plannedActions.length})</span>
-                      </div>
-                      <ul className="text-[11px] text-slate-300 list-disc list-inside space-y-0.5 mb-2">
-                        {msg.plannedActions.map((act, i) => (
-                          <li key={i}>{act.description}</li>
-                        ))}
-                      </ul>
-                      <button
-                        onClick={() => onApplyPendingActions(msg.id)}
-                        className="w-full py-1 px-2.5 bg-violet-600 hover:bg-violet-500 text-white rounded text-xs font-mono font-semibold transition-colors flex items-center justify-center gap-1.5 shadow"
-                      >
-                        <CheckCircle2 className="w-3.5 h-3.5" />
-                        <span>Apply Changes to Project</span>
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
-
-            {isAiProcessing && (
-              <div className="flex items-center gap-2 p-3 bg-[#161b24] rounded-lg border border-[#232c3d] text-xs font-mono text-violet-300">
-                <Sparkles className="w-4 h-4 text-violet-400 animate-spin" />
-                <span>KITT is analyzing circuit physics and synthesizing changes...</span>
-              </div>
-            )}
-          </div>
-
-          {/* Contextual Quick Suggestions */}
-          <div className="px-3 py-2 border-t border-[#232936] bg-[#0c0e13] flex flex-wrap gap-1">
-            <button
-              onClick={() => handleQuickAction('Explain how this circuit works in detail.')}
-              className="px-2 py-0.5 text-[10px] font-mono bg-[#161b24] hover:bg-[#202736] text-slate-300 rounded border border-[#262f40] transition-colors"
-            >
-              Explain Circuit
-            </button>
-            <button
-              onClick={() => handleQuickAction('Add a 220 ohm resistor before the LED.')}
-              className="px-2 py-0.5 text-[10px] font-mono bg-[#161b24] hover:bg-[#202736] text-slate-300 rounded border border-[#262f40] transition-colors"
-            >
-              Add Resistor
-            </button>
-            <button
-              onClick={() => handleQuickAction('Make the green light stay on for 5 seconds.')}
-              className="px-2 py-0.5 text-[10px] font-mono bg-[#161b24] hover:bg-[#202736] text-slate-300 rounded border border-[#262f40] transition-colors"
-            >
-              5s Timing
-            </button>
-            <button
-              onClick={() => handleQuickAction('Replace the microcontroller with an ESP32.')}
-              className="px-2 py-0.5 text-[10px] font-mono bg-[#161b24] hover:bg-[#202736] text-slate-300 rounded border border-[#262f40] transition-colors"
-            >
-              Use ESP32
-            </button>
-          </div>
-
-          {/* User Prompt Input Form */}
-          <form onSubmit={handleSend} className="p-2.5 bg-[#0f1218] border-t border-[#232936] flex gap-2">
-            <input
-              type="text"
-              value={inputText}
-              onChange={(e) => setInputText(e.target.value)}
-              placeholder="Tell KITT what to build or change..."
-              className="flex-1 bg-[#161b24] text-xs text-slate-200 placeholder-slate-500 px-3 py-2 rounded-md border border-[#262f40] focus:border-violet-500 outline-none transition-colors"
-              disabled={isAiProcessing}
-            />
-            <button
-              type="submit"
-              disabled={!inputText.trim() || isAiProcessing}
-              className="p-2 bg-violet-600 hover:bg-violet-500 disabled:opacity-40 text-white rounded-md transition-colors"
-            >
-              <Send className="w-4 h-4" />
-            </button>
-          </form>
-        </div>
-      )}
-
-      {/* TAB 2: COMPONENT INSPECTOR & PROPERTY EDITING */}
+      {/* COMPONENT INSPECTOR & PROPERTY EDITING */}
       {activeTab === 'properties' && (
         <div className="flex-1 overflow-y-auto p-3 space-y-4">
           {selectedComponent ? (
@@ -505,10 +327,10 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
 
                 <button
                   onClick={() => onFixDrcIssue(issue)}
-                  className="w-full py-1.5 px-3 bg-violet-600 hover:bg-violet-500 text-white rounded text-xs font-mono font-semibold transition-colors flex items-center justify-center gap-1.5"
+                  className="w-full py-1.5 px-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-xs font-mono font-semibold transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
                 >
-                  <Sparkles className="w-3.5 h-3.5" />
-                  <span>Fix with KITT AI</span>
+                  <Zap className="w-3.5 h-3.5" />
+                  <span>Apply Recommended Fix</span>
                 </button>
               </div>
             ))

@@ -1,5 +1,6 @@
 export type ComponentCategory =
   | 'mcu'
+  | 'logic'
   | 'basic'
   | 'input'
   | 'sensor'
@@ -10,6 +11,15 @@ export type ComponentCategory =
 export type ComponentType =
   | 'arduino_uno'
   | 'esp32'
+  | 'and_gate'
+  | 'or_gate'
+  | 'not_gate'
+  | 'nand_gate'
+  | 'nor_gate'
+  | 'xor_gate'
+  | 'xnor_gate'
+  | 'logic_switch'
+  | 'logic_probe'
   | 'led'
   | 'resistor'
   | 'pushbutton'
@@ -159,6 +169,7 @@ export interface AIMessage {
   role: 'user' | 'assistant' | 'system';
   content: string;
   timestamp: string;
+  modelUsed?: string;
   plan?: AIPlanStep[];
   plannedActions?: AIAction[];
   status?: 'planning' | 'pending_confirmation' | 'executing' | 'done' | 'applied' | 'error';

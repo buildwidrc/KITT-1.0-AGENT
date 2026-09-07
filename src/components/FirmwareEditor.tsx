@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { FirmwareProject, CircuitComponent } from '../types';
-import { Code2, Play, CheckCircle2, Cpu, Copy, RefreshCw } from 'lucide-react';
+import { Code2, CheckCircle2, Cpu, Copy, RefreshCw } from 'lucide-react';
 
 interface FirmwareEditorProps {
   firmware: FirmwareProject;
@@ -70,7 +70,7 @@ export const FirmwareEditor: React.FC<FirmwareEditorProps> = ({
             {isCompiling ? (
               <RefreshCw className="w-3.5 h-3.5 animate-spin" />
             ) : (
-              <Play className="w-3.5 h-3.5" />
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-200" />
             )}
             <span>{isCompiling ? 'COMPILING...' : 'VERIFY & FLASH'}</span>
           </button>

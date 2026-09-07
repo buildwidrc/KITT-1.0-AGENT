@@ -1,6 +1,5 @@
 import React from 'react';
 import {
-  Play,
   Pause,
   RotateCcw,
   Undo2,
@@ -12,7 +11,7 @@ import {
   Boxes,
   FileSpreadsheet,
   Zap,
-  Sparkles,
+  Plus,
   Download,
   AlertTriangle,
 } from 'lucide-react';
@@ -109,9 +108,9 @@ export const TopBar: React.FC<TopBarProps> = ({
 
           <button
             onClick={openNewProjectModal}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium bg-[#1a202c] hover:bg-[#242c3d] text-slate-300 border border-[#2d3748] transition-all hover:border-violet-500/40"
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium bg-[#1a202c] hover:bg-[#242c3d] text-slate-300 border border-[#2d3748] transition-all hover:border-violet-500/40 cursor-pointer"
           >
-            <Sparkles className="w-3.5 h-3.5 text-violet-400" />
+            <Plus className="w-3.5 h-3.5 text-violet-400" />
             <span>New Invention</span>
           </button>
         </div>
@@ -194,13 +193,17 @@ export const TopBar: React.FC<TopBarProps> = ({
         <div className="flex items-center gap-2 bg-[#0b0d12] px-2.5 py-1 rounded-lg border border-[#232936]">
           <button
             onClick={() => setIsSimulating(!isSimulating)}
-            className={`flex items-center gap-1.5 px-3 py-1 rounded text-xs font-semibold font-mono transition-all ${
+            className={`flex items-center gap-2 px-3 py-1 rounded text-xs font-semibold font-mono transition-all cursor-pointer ${
               isSimulating
                 ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-md shadow-emerald-900/40'
                 : 'bg-slate-700 hover:bg-slate-600 text-slate-200'
             }`}
           >
-            {isSimulating ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
+            {isSimulating ? (
+              <Pause className="w-3.5 h-3.5" />
+            ) : (
+              <span className="w-2 h-2 rounded-full bg-slate-300" />
+            )}
             <span>{isSimulating ? 'PAUSE' : 'SIMULATE'}</span>
           </button>
 

@@ -8,7 +8,6 @@ import {
   Maximize,
   Move,
   Layers,
-  Sparkles,
 } from 'lucide-react';
 
 interface Lab3DSceneProps {
@@ -18,6 +17,25 @@ interface Lab3DSceneProps {
   onSelectComponent: (id: string | null) => void;
   simulation: SimulationMeasurement | null;
   isSimulating: boolean;
+  onFallbackTo2D?: () => void;
+}
+
+// Helper to recursively dispose Three.js meshes, geometries, and materials
+function disposeHierarchy(obj: THREE.Object3D) {
+  obj.traverse((child) => {
+    if (child instanceof THREE.Mesh) {
+      if (child.geometry) {
+        child.geometry.dispose();
+      }
+      if (child.material) {
+        if (Array.isArray(child.material)) {
+          child.material.forEach((m) => m.dispose());
+        } else {
+          child.material.dispose();
+        }
+      }
+    }
+  });
 }
 
 export const Lab3DScene: React.FC<Lab3DSceneProps> = ({
@@ -27,8 +45,11 @@ export const Lab3DScene: React.FC<Lab3DSceneProps> = ({
   onSelectComponent,
   simulation,
   isSimulating,
+  onFallbackTo2D,
 }) => {
   const mountRef = useRef<HTMLDivElement>(null);
+  const [webglError, setWebglError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
 
   // Scene references
   const sceneRef = useRef<THREE.Scene | null>(null);
@@ -77,6 +98,22 @@ export const Lab3DScene: React.FC<Lab3DSceneProps> = ({
     const container = mountRef.current;
     if (!container) return;
 
+    // Check WebGL availability beforehand
+    try {
+      const testCanvas = document.createElement('canvas');
+      const gl =
+        testCanvas.getContext('webgl2') ||
+        testCanvas.getContext('webgl') ||
+        testCanvas.getContext('experimental-webgl');
+      if (!gl) {
+        setWebglError('WebGL context is not supported or was blocked by the browser.');
+        return;
+      }
+    } catch (err: any) {
+      setWebglError(err?.message || 'WebGL check failed');
+      return;
+    }
+
     // 1. Scene
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x0c0f14);
@@ -86,21 +123,55 @@ export const Lab3DScene: React.FC<Lab3DSceneProps> = ({
     scene.fog = new THREE.FogExp2(0x0c0f14, 0.025);
 
     // 2. Camera
-    const aspect = container.clientWidth / container.clientHeight;
+    const width = container.clientWidth || 800;
+    const height = container.clientHeight || 600;
+    const aspect = width / height;
     const camera = new THREE.PerspectiveCamera(42, aspect, 0.1, 1000);
     cameraRef.current = camera;
     updateCameraPosition();
 
-    // 3. Renderer
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
-    renderer.setSize(container.clientWidth, container.clientHeight);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.1;
-    container.appendChild(renderer.domElement);
-    rendererRef.current = renderer;
+    // 3. Renderer with safe creation and error handling
+    let renderer: THREE.WebGLRenderer;
+    try {
+      renderer = new THREE.WebGLRenderer({
+        antialias: false,
+        alpha: false,
+        powerPreference: 'default',
+        failIfMajorPerformanceCaveat: false,
+      });
+      renderer.setSize(width, height);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.1;
+      container.appendChild(renderer.domElement);
+      rendererRef.current = renderer;
+    } catch (err: any) {
+      console.warn('Failed to create WebGLRenderer:', err);
+      setWebglError(
+        err?.message ||
+          'Failed to create WebGL context. Web page caused context loss or hardware acceleration is unavailable.'
+      );
+      return;
+    }
+
+    // Context loss prevention & recovery
+    let animationFrameId = 0;
+    const domElement = renderer.domElement;
+    const handleContextLost = (e: Event) => {
+      e.preventDefault();
+      cancelAnimationFrame(animationFrameId);
+      setWebglError('WebGL context was lost or blocked by the browser.');
+    };
+
+    const handleContextRestored = () => {
+      setWebglError(null);
+      setRetryCount((c) => c + 1);
+    };
+
+    domElement.addEventListener('webglcontextlost', handleContextLost, false);
+    domElement.addEventListener('webglcontextrestored', handleContextRestored, false);
 
     // 4. Lights
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.85);
@@ -140,7 +211,6 @@ export const Lab3DScene: React.FC<Lab3DSceneProps> = ({
     wireMeshesRef.current = wiresGroup;
 
     // 6. Animation Loop
-    let animationFrameId: number;
     const animate = () => {
       animationFrameId = requestAnimationFrame(animate);
       renderer.render(scene, camera);
@@ -240,7 +310,6 @@ export const Lab3DScene: React.FC<Lab3DSceneProps> = ({
       }
     };
 
-    const domElement = renderer.domElement;
     domElement.addEventListener('mousedown', onMouseDown);
     window.addEventListener('mousemove', onMouseMove);
     window.addEventListener('mouseup', onMouseUp);
@@ -251,26 +320,43 @@ export const Lab3DScene: React.FC<Lab3DSceneProps> = ({
     return () => {
       cancelAnimationFrame(animationFrameId);
       resizeObserver.disconnect();
+      domElement.removeEventListener('webglcontextlost', handleContextLost);
+      domElement.removeEventListener('webglcontextrestored', handleContextRestored);
       domElement.removeEventListener('mousedown', onMouseDown);
       window.removeEventListener('mousemove', onMouseMove);
       window.removeEventListener('mouseup', onMouseUp);
       domElement.removeEventListener('wheel', onWheel);
       domElement.removeEventListener('contextmenu', onContextMenu);
       domElement.removeEventListener('click', onClick);
-      renderer.dispose();
+
+      if (sceneRef.current) {
+        disposeHierarchy(sceneRef.current);
+      }
+      try {
+        renderer.dispose();
+        renderer.forceContextLoss();
+      } catch {
+        // Ignore dispose error
+      }
       if (container.contains(domElement)) {
         container.removeChild(domElement);
       }
+      rendererRef.current = null;
+      sceneRef.current = null;
+      cameraRef.current = null;
     };
-  }, []);
+  }, [retryCount]);
 
   // Update 3D Component Models
   useEffect(() => {
     const scene = sceneRef.current;
     if (!scene) return;
 
-    // Remove old components
-    componentMeshesRef.current.forEach((grp) => scene.remove(grp));
+    // Remove old components and dispose GPU resources
+    componentMeshesRef.current.forEach((grp) => {
+      scene.remove(grp);
+      disposeHierarchy(grp);
+    });
     componentMeshesRef.current.clear();
     ledLightsRef.current.clear();
 
@@ -317,6 +403,21 @@ export const Lab3DScene: React.FC<Lab3DSceneProps> = ({
         case 'battery':
           group.add(create3DBattery());
           break;
+        case 'and_gate':
+        case 'or_gate':
+        case 'not_gate':
+        case 'nand_gate':
+        case 'nor_gate':
+        case 'xor_gate':
+        case 'xnor_gate':
+          group.add(create3DLogicGateIC(comp.type, comp.label || comp.name));
+          break;
+        case 'logic_switch':
+          group.add(create3DLogicSwitch(comp.properties.state === 1));
+          break;
+        case 'logic_probe':
+          group.add(create3DLogicProbe(comp.properties.value === 1));
+          break;
         default:
           group.add(createGeneric3DComponent(comp.name));
           break;
@@ -361,6 +462,28 @@ export const Lab3DScene: React.FC<Lab3DSceneProps> = ({
             domeMesh.material.emissiveIntensity = isOn ? 2.0 : 0.1;
           }
         }
+      } else if (['and_gate', 'or_gate', 'not_gate', 'nand_gate', 'nor_gate', 'xor_gate', 'xnor_gate'].includes(comp.type)) {
+        const state = simulation.componentStates[comp.id];
+        const group = componentMeshesRef.current.get(comp.id);
+        if (group) {
+          const indicator = group.getObjectByName('gate_indicator') as THREE.Mesh;
+          if (indicator && indicator.material instanceof THREE.MeshStandardMaterial) {
+            const isHigh = state?.logicState === 1;
+            indicator.material.emissive.setHex(isHigh ? 0x10b981 : 0x1e293b);
+            indicator.material.emissiveIntensity = isHigh ? 2.5 : 0.2;
+          }
+        }
+      } else if (comp.type === 'logic_probe') {
+        const state = simulation.componentStates[comp.id];
+        const group = componentMeshesRef.current.get(comp.id);
+        if (group) {
+          const probeLight = group.getObjectByName('probe_led') as THREE.Mesh;
+          if (probeLight && probeLight.material instanceof THREE.MeshStandardMaterial) {
+            const isHigh = state?.value === 1;
+            probeLight.material.emissive.setHex(isHigh ? 0x22c55e : 0x3b82f6);
+            probeLight.material.emissiveIntensity = 2.0;
+          }
+        }
       }
     });
   }, [simulation]);
@@ -370,9 +493,11 @@ export const Lab3DScene: React.FC<Lab3DSceneProps> = ({
     const wiresGroup = wireMeshesRef.current;
     if (!wiresGroup) return;
 
-    // Clear old wire meshes
+    // Clear old wire meshes and dispose GPU memory
     while (wiresGroup.children.length > 0) {
-      wiresGroup.remove(wiresGroup.children[0]);
+      const child = wiresGroup.children[0];
+      wiresGroup.remove(child);
+      disposeHierarchy(child);
     }
 
     // Generate physical 3D jumper wires
@@ -427,6 +552,66 @@ export const Lab3DScene: React.FC<Lab3DSceneProps> = ({
     });
   }, [wires, components]);
 
+  if (webglError) {
+    return (
+      <div className="relative w-full h-full flex flex-col items-center justify-center p-6 bg-[#0c0f16] text-slate-200 select-none font-sans">
+        <div className="max-w-md w-full bg-[#121722] border border-violet-500/30 rounded-xl p-6 shadow-2xl space-y-5 text-center">
+          <div className="w-12 h-12 bg-violet-500/10 border border-violet-500/20 rounded-xl flex items-center justify-center mx-auto text-violet-400">
+            <Layers className="w-6 h-6" />
+          </div>
+          <div className="space-y-1.5">
+            <h2 className="text-base font-bold text-slate-100 font-mono">
+              3D Lab Graphics Fallback
+            </h2>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              WebGL context could not be acquired in this browser session. All schematic editing, circuit simulation, multimeter telemetry, and KITT AI co-pilot tools are fully active in the 2D EDA Schematic.
+            </p>
+          </div>
+
+          <div className="p-3 bg-[#0a0d14] rounded-lg border border-[#202738] flex items-center justify-around text-xs font-mono text-slate-300">
+            <div>
+              <span className="text-slate-500 block text-[10px]">PARTS</span>
+              <span className="font-bold text-violet-400">{components.length} Items</span>
+            </div>
+            <div className="h-6 w-px bg-[#202738]" />
+            <div>
+              <span className="text-slate-500 block text-[10px]">WIRES</span>
+              <span className="font-bold text-cyan-400">{wires.length} Nets</span>
+            </div>
+            <div className="h-6 w-px bg-[#202738]" />
+            <div>
+              <span className="text-slate-500 block text-[10px]">KERNEL</span>
+              <span className={`font-bold ${isSimulating ? 'text-emerald-400' : 'text-amber-400'}`}>
+                {isSimulating ? 'Active' : 'Standby'}
+              </span>
+            </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-2 pt-1">
+            <button
+              onClick={() => onFallbackTo2D?.()}
+              className="flex-1 py-2.5 px-4 bg-violet-600 hover:bg-violet-500 active:bg-violet-700 text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-2 transition-all shadow-lg shadow-violet-900/40 cursor-pointer"
+            >
+              <Layers className="w-4 h-4" />
+              <span>Switch to 2D EDA Schematic</span>
+            </button>
+            <button
+              onClick={() => {
+                setWebglError(null);
+                setRetryCount((c) => c + 1);
+              }}
+              className="py-2.5 px-3 bg-[#19202c] hover:bg-[#222b3b] text-slate-300 hover:text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors border border-[#2b364d] cursor-pointer"
+              title="Attempt to reinitialize WebGL context"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>Retry 3D</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="relative w-full h-full select-none overflow-hidden">
       {/* 3D Viewport Controls Bar */}
@@ -478,6 +663,20 @@ export const Lab3DScene: React.FC<Lab3DSceneProps> = ({
         <span>🖱 Scroll: Zoom</span>
         <span>👆 Click: Select Part</span>
       </div>
+
+      {/* Clean 3D Breadboard Workspace Indicator */}
+      {components.length === 0 && (
+        <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center text-center p-6 select-none z-10">
+          <div className="max-w-md p-6 rounded-2xl bg-[#0e121a]/85 border border-[#232c3d]/70 backdrop-blur-sm shadow-2xl">
+            <h3 className="text-sm font-bold font-mono text-slate-200 uppercase tracking-wider mb-1.5">
+              Clean 3D Breadboard Lab
+            </h3>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              Workbench is clean and ready. Add components from the <strong className="text-violet-300">Parts</strong> library or ask <strong className="text-violet-300">KITT AI</strong> on the left.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* WebGL Canvas Container */}
       <div ref={mountRef} className="w-full h-full" />
@@ -814,5 +1013,158 @@ function createGeneric3DComponent(name: string): THREE.Group {
   const box = new THREE.Mesh(boxGeo, boxMat);
   box.position.y = 0.2;
   group.add(box);
+  return group;
+}
+
+function create3DLogicGateIC(type: string, label: string): THREE.Group {
+  const group = new THREE.Group();
+
+  // Standard DIP-14 IC Body (Dual In-Line Package)
+  const icBodyGeo = new THREE.BoxGeometry(1.8, 0.35, 0.85);
+  const icBodyMat = new THREE.MeshStandardMaterial({
+    color: 0x18181b,
+    roughness: 0.65,
+    metalness: 0.15,
+  });
+  const icBody = new THREE.Mesh(icBodyGeo, icBodyMat);
+  icBody.position.y = 0.28;
+  group.add(icBody);
+
+  // Pin 1 Index Notch
+  const notchGeo = new THREE.CylinderGeometry(0.12, 0.12, 0.36, 16, 1, false, 0, Math.PI);
+  const notchMat = new THREE.MeshStandardMaterial({ color: 0x09090b, roughness: 0.9 });
+  const notch = new THREE.Mesh(notchGeo, notchMat);
+  notch.position.set(-0.9, 0.28, 0);
+  notch.rotation.y = -Math.PI / 2;
+  group.add(notch);
+
+  // Laser marking badge on IC top surface
+  const labelGeo = new THREE.PlaneGeometry(1.2, 0.45);
+  const labelCanvas = document.createElement('canvas');
+  labelCanvas.width = 256;
+  labelCanvas.height = 96;
+  const ctx = labelCanvas.getContext('2d');
+  if (ctx) {
+    ctx.fillStyle = '#18181b';
+    ctx.fillRect(0, 0, 256, 96);
+    ctx.fillStyle = '#e2e8f0';
+    ctx.font = 'bold 24px monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    const icCode =
+      type === 'and_gate'
+        ? 'SN74LS08N'
+        : type === 'or_gate'
+        ? 'SN74LS32N'
+        : type === 'not_gate'
+        ? 'SN74LS04N'
+        : type === 'nand_gate'
+        ? 'SN74LS00N'
+        : type === 'nor_gate'
+        ? 'SN74LS02N'
+        : type === 'xor_gate'
+        ? 'SN74LS86N'
+        : 'SN74LS266';
+    ctx.fillText(icCode, 128, 38);
+    ctx.font = '16px monospace';
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillText(label.split(' ')[0] || 'LOGIC', 128, 68);
+  }
+  const texture = new THREE.CanvasTexture(labelCanvas);
+  const labelMat = new THREE.MeshBasicMaterial({ map: texture });
+  const labelMesh = new THREE.Mesh(labelGeo, labelMat);
+  labelMesh.rotation.x = -Math.PI / 2;
+  labelMesh.position.set(0, 0.46, 0);
+  group.add(labelMesh);
+
+  // Logic Output Real-time Mini LED Indicator on top
+  const ledGeo = new THREE.SphereGeometry(0.08, 12, 12);
+  const ledMat = new THREE.MeshStandardMaterial({
+    color: 0x10b981,
+    emissive: 0x064e3b,
+    emissiveIntensity: 0.3,
+    roughness: 0.3,
+  });
+  const indicator = new THREE.Mesh(ledGeo, ledMat);
+  indicator.name = 'gate_indicator';
+  indicator.position.set(0.65, 0.46, 0);
+  group.add(indicator);
+
+  // 14 Metallic Gull-wing Pins (7 on front side, 7 on back side)
+  const pinGeo = new THREE.BoxGeometry(0.06, 0.3, 0.08);
+  const pinMat = new THREE.MeshStandardMaterial({
+    color: 0xd4d4d8,
+    metalness: 0.95,
+    roughness: 0.2,
+  });
+
+  for (let i = 0; i < 7; i++) {
+    const xPos = -0.6 + i * 0.2;
+    // Front side pins
+    const pFront = new THREE.Mesh(pinGeo, pinMat);
+    pFront.position.set(xPos, 0.15, 0.45);
+    // Back side pins
+    const pBack = new THREE.Mesh(pinGeo, pinMat);
+    pBack.position.set(xPos, 0.15, -0.45);
+    group.add(pFront, pBack);
+  }
+
+  return group;
+}
+
+function create3DLogicSwitch(state: boolean): THREE.Group {
+  const group = new THREE.Group();
+
+  // Miniature SPDT Rocker Housing
+  const bodyGeo = new THREE.BoxGeometry(0.9, 0.4, 0.6);
+  const bodyMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.7 });
+  const body = new THREE.Mesh(bodyGeo, bodyMat);
+  body.position.y = 0.2;
+  group.add(body);
+
+  // Toggle Lever
+  const leverGeo = new THREE.CylinderGeometry(0.04, 0.05, 0.35, 12);
+  const leverMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, metalness: 0.9, roughness: 0.1 });
+  const lever = new THREE.Mesh(leverGeo, leverMat);
+  lever.position.set(state ? 0.15 : -0.15, 0.42, 0);
+  lever.rotation.z = state ? -0.35 : 0.35;
+  group.add(lever);
+
+  // Status LED Dot
+  const ledGeo = new THREE.SphereGeometry(0.07, 12, 12);
+  const ledMat = new THREE.MeshStandardMaterial({
+    color: state ? 0x22c55e : 0x64748b,
+    emissive: state ? 0x22c55e : 0x1e293b,
+    emissiveIntensity: state ? 1.5 : 0.1,
+  });
+  const dot = new THREE.Mesh(ledGeo, ledMat);
+  dot.position.set(0, 0.41, 0.18);
+  group.add(dot);
+
+  return group;
+}
+
+function create3DLogicProbe(value: boolean): THREE.Group {
+  const group = new THREE.Group();
+
+  // Probe Body
+  const bodyGeo = new THREE.BoxGeometry(0.8, 0.35, 0.6);
+  const bodyMat = new THREE.MeshStandardMaterial({ color: 0x090d16, roughness: 0.6 });
+  const body = new THREE.Mesh(bodyGeo, bodyMat);
+  body.position.y = 0.2;
+  group.add(body);
+
+  // Digital LED Display Lens
+  const lensGeo = new THREE.BoxGeometry(0.5, 0.05, 0.35);
+  const lensMat = new THREE.MeshStandardMaterial({
+    color: value ? 0x22c55e : 0x3b82f6,
+    emissive: value ? 0x22c55e : 0x3b82f6,
+    emissiveIntensity: 1.8,
+  });
+  const lens = new THREE.Mesh(lensGeo, lensMat);
+  lens.name = 'probe_led';
+  lens.position.set(0, 0.38, 0);
+  group.add(lens);
+
   return group;
 }

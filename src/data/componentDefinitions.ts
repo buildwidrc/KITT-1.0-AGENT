@@ -1,9 +1,9 @@
-import { CircuitComponent, ComponentType, PinDefinition } from '../types';
+import { CircuitComponent, ComponentCategory, ComponentType, PinDefinition } from '../types';
 
 export interface ComponentMetadata {
   type: ComponentType;
   name: string;
-  category: 'mcu' | 'basic' | 'input' | 'sensor' | 'output' | 'power' | 'prototyping';
+  category: ComponentCategory;
   description: string;
   defaultProperties: Record<string, any>;
   pins: PinDefinition[];
@@ -258,6 +258,194 @@ export const COMPONENT_CATALOG: Record<ComponentType, ComponentMetadata> = {
     height2d: 50,
     size3d: [2.2, 0.8, 1.4],
     colorHex: '#b45309',
+  },
+  and_gate: {
+    type: 'and_gate',
+    name: 'AND Gate (7408)',
+    category: 'logic',
+    description: 'ANSI/IEEE 2-input AND logic gate. Output Y is HIGH (1) only if both inputs A and B are HIGH (Y = A · B).',
+    defaultProperties: {
+      logicType: 'AND',
+      icCode: '74LS08',
+      logicState: 0,
+      inA: 0,
+      inB: 0,
+    },
+    pins: [
+      { id: 'in_a', name: 'Input A', type: 'digital', x2d: -38, y2d: -10, x3d: -0.75, y3d: 0.25, z3d: -0.3 },
+      { id: 'in_b', name: 'Input B', type: 'digital', x2d: -38, y2d: 10, x3d: -0.75, y3d: 0.25, z3d: 0.3 },
+      { id: 'out_y', name: 'Output Y', type: 'digital', x2d: 35, y2d: 0, x3d: 0.7, y3d: 0.25, z3d: 0.0 },
+    ],
+    width2d: 78,
+    height2d: 50,
+    size3d: [1.8, 0.45, 0.9],
+    colorHex: '#3b82f6',
+  },
+  or_gate: {
+    type: 'or_gate',
+    name: 'OR Gate (7432)',
+    category: 'logic',
+    description: 'ANSI/IEEE 2-input OR logic gate. Output Y is HIGH (1) if input A, input B, or both are HIGH (Y = A + B).',
+    defaultProperties: {
+      logicType: 'OR',
+      icCode: '74LS32',
+      logicState: 0,
+      inA: 0,
+      inB: 0,
+    },
+    pins: [
+      { id: 'in_a', name: 'Input A', type: 'digital', x2d: -38, y2d: -10, x3d: -0.75, y3d: 0.25, z3d: -0.3 },
+      { id: 'in_b', name: 'Input B', type: 'digital', x2d: -38, y2d: 10, x3d: -0.75, y3d: 0.25, z3d: 0.3 },
+      { id: 'out_y', name: 'Output Y', type: 'digital', x2d: 35, y2d: 0, x3d: 0.7, y3d: 0.25, z3d: 0.0 },
+    ],
+    width2d: 78,
+    height2d: 52,
+    size3d: [1.8, 0.45, 0.9],
+    colorHex: '#06b6d4',
+  },
+  not_gate: {
+    type: 'not_gate',
+    name: 'NOT Inverter (7404)',
+    category: 'logic',
+    description: 'ANSI/IEEE Inverter logic gate. Inverts input signal: Output Y = NOT A (Y = A\').',
+    defaultProperties: {
+      logicType: 'NOT',
+      icCode: '74LS04',
+      logicState: 1,
+      inA: 0,
+    },
+    pins: [
+      { id: 'in_a', name: 'Input A', type: 'digital', x2d: -30, y2d: 0, x3d: -0.6, y3d: 0.25, z3d: 0.0 },
+      { id: 'out_y', name: 'Output Y', type: 'digital', x2d: 30, y2d: 0, x3d: 0.6, y3d: 0.25, z3d: 0.0 },
+    ],
+    width2d: 64,
+    height2d: 44,
+    size3d: [1.6, 0.45, 0.8],
+    colorHex: '#8b5cf6',
+  },
+  nand_gate: {
+    type: 'nand_gate',
+    name: 'NAND Gate (7400)',
+    category: 'logic',
+    description: 'Universal logic gate. Output Y is LOW (0) only when both inputs A and B are HIGH (Y = (A · B)\').',
+    defaultProperties: {
+      logicType: 'NAND',
+      icCode: '74LS00',
+      logicState: 1,
+      inA: 0,
+      inB: 0,
+    },
+    pins: [
+      { id: 'in_a', name: 'Input A', type: 'digital', x2d: -35, y2d: -10, x3d: -0.7, y3d: 0.25, z3d: -0.3 },
+      { id: 'in_b', name: 'Input B', type: 'digital', x2d: -35, y2d: 10, x3d: -0.7, y3d: 0.25, z3d: 0.3 },
+      { id: 'out_y', name: 'Output Y', type: 'digital', x2d: 40, y2d: 0, x3d: 0.75, y3d: 0.25, z3d: 0.0 },
+    ],
+    width2d: 80,
+    height2d: 50,
+    size3d: [1.8, 0.45, 0.9],
+    colorHex: '#ec4899',
+  },
+  nor_gate: {
+    type: 'nor_gate',
+    name: 'NOR Gate (7402)',
+    category: 'logic',
+    description: 'Universal logic gate. Output Y is HIGH (1) only when all inputs are LOW (Y = (A + B)\').',
+    defaultProperties: {
+      logicType: 'NOR',
+      icCode: '74LS02',
+      logicState: 1,
+      inA: 0,
+      inB: 0,
+    },
+    pins: [
+      { id: 'in_a', name: 'Input A', type: 'digital', x2d: -35, y2d: -10, x3d: -0.7, y3d: 0.25, z3d: -0.3 },
+      { id: 'in_b', name: 'Input B', type: 'digital', x2d: -35, y2d: 10, x3d: -0.7, y3d: 0.25, z3d: 0.3 },
+      { id: 'out_y', name: 'Output Y', type: 'digital', x2d: 40, y2d: 0, x3d: 0.75, y3d: 0.25, z3d: 0.0 },
+    ],
+    width2d: 80,
+    height2d: 52,
+    size3d: [1.8, 0.45, 0.9],
+    colorHex: '#f43f5e',
+  },
+  xor_gate: {
+    type: 'xor_gate',
+    name: 'XOR Gate (7486)',
+    category: 'logic',
+    description: 'ANSI/IEEE Exclusive-OR gate. Output Y is HIGH (1) when inputs differ (Y = A ⊕ B = A\'B + AB\').',
+    defaultProperties: {
+      logicType: 'XOR',
+      icCode: '74LS86',
+      logicState: 0,
+      inA: 0,
+      inB: 0,
+    },
+    pins: [
+      { id: 'in_a', name: 'Input A', type: 'digital', x2d: -38, y2d: -10, x3d: -0.75, y3d: 0.25, z3d: -0.3 },
+      { id: 'in_b', name: 'Input B', type: 'digital', x2d: -38, y2d: 10, x3d: -0.75, y3d: 0.25, z3d: 0.3 },
+      { id: 'out_y', name: 'Output Y', type: 'digital', x2d: 35, y2d: 0, x3d: 0.7, y3d: 0.25, z3d: 0.0 },
+    ],
+    width2d: 78,
+    height2d: 52,
+    size3d: [1.8, 0.45, 0.9],
+    colorHex: '#a855f7',
+  },
+  xnor_gate: {
+    type: 'xnor_gate',
+    name: 'XNOR Gate (74266)',
+    category: 'logic',
+    description: 'Equivalence gate. Output Y is HIGH (1) when inputs are identical (Y = (A ⊕ B)\').',
+    defaultProperties: {
+      logicType: 'XNOR',
+      icCode: '74LS266',
+      logicState: 1,
+      inA: 0,
+      inB: 0,
+    },
+    pins: [
+      { id: 'in_a', name: 'Input A', type: 'digital', x2d: -38, y2d: -10, x3d: -0.75, y3d: 0.25, z3d: -0.3 },
+      { id: 'in_b', name: 'Input B', type: 'digital', x2d: -38, y2d: 10, x3d: -0.75, y3d: 0.25, z3d: 0.3 },
+      { id: 'out_y', name: 'Output Y', type: 'digital', x2d: 40, y2d: 0, x3d: 0.75, y3d: 0.25, z3d: 0.0 },
+    ],
+    width2d: 82,
+    height2d: 52,
+    size3d: [1.8, 0.45, 0.9],
+    colorHex: '#e11d48',
+  },
+  logic_switch: {
+    type: 'logic_switch',
+    name: 'Digital Logic Input',
+    category: 'logic',
+    description: 'Interactive SPDT digital logic switch. Click to toggle between Logic 0 (0V) and Logic 1 (5V).',
+    defaultProperties: {
+      state: 0,
+      voltage: 0.0,
+      label: 'INPUT',
+    },
+    pins: [
+      { id: 'out', name: 'Out (Q)', type: 'digital', x2d: 25, y2d: 0, x3d: 0.5, y3d: 0.25, z3d: 0.0 },
+    ],
+    width2d: 56,
+    height2d: 46,
+    size3d: [1.1, 0.5, 0.9],
+    colorHex: '#10b981',
+  },
+  logic_probe: {
+    type: 'logic_probe',
+    name: 'Digital Logic Probe',
+    category: 'logic',
+    description: 'High-visibility digital state probe with LED logic level readout (0: LOW, 1: HIGH).',
+    defaultProperties: {
+      value: 0,
+      voltage: 0.0,
+      label: 'PROBE',
+    },
+    pins: [
+      { id: 'in', name: 'In (D)', type: 'digital', x2d: -25, y2d: 0, x3d: -0.5, y3d: 0.25, z3d: 0.0 },
+    ],
+    width2d: 56,
+    height2d: 46,
+    size3d: [1.1, 0.5, 0.9],
+    colorHex: '#059669',
   },
   breadboard: {
     type: 'breadboard',

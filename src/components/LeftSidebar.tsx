@@ -5,7 +5,6 @@ import {
   Plus,
   Radio,
   Sliders,
-  Sparkles,
   Zap,
   CheckCircle2,
   FileCode,
@@ -13,17 +12,27 @@ import {
   ChevronDown,
   ChevronRight,
   Layers,
+  Bot,
+  Boxes,
 } from 'lucide-react';
-import { ComponentCategory, ComponentType } from '../types';
+import { ComponentCategory, ComponentType, AIMessage } from '../types';
 import { COMPONENT_CATALOG } from '../data/componentDefinitions';
+import { ChatbotPanel } from './ChatbotPanel';
 
 interface LeftSidebarProps {
   onAddComponent: (type: ComponentType) => void;
-  onLoadPreset: (presetKey: 'traffic_light' | 'plant_watering') => void;
+  onLoadPreset: (presetKey: 'traffic_light' | 'plant_watering' | 'logic_gate') => void;
   activeTab: 'canvas' | 'architecture' | 'firmware' | 'instruments' | 'bom';
   setActiveTab: (tab: 'canvas' | 'architecture' | 'firmware' | 'instruments' | 'bom') => void;
   componentCount: number;
   wireCount: number;
+  messages?: AIMessage[];
+  onSendMessage?: (text: string) => void;
+  isAiProcessing?: boolean;
+  onApplyPendingActions?: (messageId: string) => void;
+  selectedModel?: string;
+  onSelectModel?: (model: string) => void;
+  onClearHistory?: () => void;
 }
 
 export const LeftSidebar: React.FC<LeftSidebarProps> = ({
@@ -33,9 +42,17 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
   setActiveTab,
   componentCount,
   wireCount,
+  messages = [],
+  onSendMessage = () => {},
+  isAiProcessing = false,
+  onApplyPendingActions = () => {},
+  selectedModel = 'gemini-3.5-flash',
+  onSelectModel,
+  onClearHistory,
 }) => {
-  const [selectedSection, setSelectedSection] = useState<'components' | 'files' | 'inventions'>('components');
+  const [selectedSection, setSelectedSection] = useState<'chat' | 'components' | 'files' | 'inventions'>('chat');
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({
+    logic: true,
     mcu: true,
     basic: true,
     input: true,
@@ -49,6 +66,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
   };
 
   const categories: { key: ComponentCategory; label: string }[] = [
+    { key: 'logic', label: 'Logic Gates & Digital ICs' },
     { key: 'mcu', label: 'Microcontrollers' },
     { key: 'output', label: 'Outputs & Actuators' },
     { key: 'sensor', label: 'Sensors & Transducers' },
@@ -62,43 +80,73 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
   };
 
   return (
-    <aside className="w-64 bg-[#11141a] border-r border-[#232936] flex flex-col h-full shrink-0 z-20 select-none">
+    <aside className="w-80 bg-[#11141a] border-r border-[#232936] flex flex-col h-full shrink-0 z-20 select-none transition-all">
       {/* Sidebar Navigation Tabs */}
-      <div className="grid grid-cols-3 p-1.5 bg-[#0c0e13] border-b border-[#232936] gap-1">
+      <div className="grid grid-cols-4 p-1.5 bg-[#0c0e13] border-b border-[#232936] gap-1 shrink-0">
+        <button
+          onClick={() => setSelectedSection('chat')}
+          className={`py-1.5 px-1.5 text-[11px] font-semibold font-mono rounded flex items-center justify-center gap-1 transition-colors cursor-pointer ${
+            selectedSection === 'chat'
+              ? 'bg-[#1e2533] text-violet-300 border border-violet-500/30'
+              : 'text-slate-400 hover:text-slate-200'
+          }`}
+          title="KITT AI Chatbot Co-Pilot"
+        >
+          <Bot className="w-3.5 h-3.5 text-violet-400" />
+          <span>Chat</span>
+        </button>
         <button
           onClick={() => setSelectedSection('components')}
-          className={`py-1.5 px-2 text-[11px] font-semibold font-mono rounded flex items-center justify-center gap-1 transition-colors ${
+          className={`py-1.5 px-1.5 text-[11px] font-semibold font-mono rounded flex items-center justify-center gap-1 transition-colors cursor-pointer ${
             selectedSection === 'components'
               ? 'bg-[#1e2533] text-violet-300 border border-violet-500/30'
               : 'text-slate-400 hover:text-slate-200'
           }`}
+          title="Hardware Component Library"
         >
           <Cpu className="w-3.5 h-3.5" />
-          <span>Library</span>
+          <span>Parts</span>
         </button>
         <button
           onClick={() => setSelectedSection('files')}
-          className={`py-1.5 px-2 text-[11px] font-semibold font-mono rounded flex items-center justify-center gap-1 transition-colors ${
+          className={`py-1.5 px-1.5 text-[11px] font-semibold font-mono rounded flex items-center justify-center gap-1 transition-colors cursor-pointer ${
             selectedSection === 'files'
               ? 'bg-[#1e2533] text-violet-300 border border-violet-500/30'
               : 'text-slate-400 hover:text-slate-200'
           }`}
+          title="Project Views & Files"
         >
           <FolderTree className="w-3.5 h-3.5" />
           <span>Files</span>
         </button>
         <button
           onClick={() => setSelectedSection('inventions')}
-          className={`py-1.5 px-2 text-[11px] font-semibold font-mono rounded flex items-center justify-center gap-1 transition-colors ${
+          className={`py-1.5 px-1.5 text-[11px] font-semibold font-mono rounded flex items-center justify-center gap-1 transition-colors cursor-pointer ${
             selectedSection === 'inventions'
               ? 'bg-[#1e2533] text-violet-300 border border-violet-500/30'
               : 'text-slate-400 hover:text-slate-200'
           }`}
+          title="Sample Circuits"
         >
-          <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+          <Boxes className="w-3.5 h-3.5 text-cyan-400" />
           <span>Presets</span>
         </button>
       </div>
+
+      {/* SECTION 0: CHATBOT IN LEFT SIDE */}
+      {selectedSection === 'chat' && (
+        <div className="flex-1 flex flex-col h-full overflow-hidden">
+          <ChatbotPanel
+            messages={messages}
+            onSendMessage={onSendMessage}
+            isAiProcessing={isAiProcessing}
+            onApplyPendingActions={onApplyPendingActions}
+            selectedModel={selectedModel}
+            onSelectModel={onSelectModel}
+            onClearHistory={onClearHistory}
+          />
+        </div>
+      )}
 
       {/* SECTION 1: COMPONENT LIBRARY */}
       {selectedSection === 'components' && (
@@ -275,6 +323,24 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
             </div>
             <p className="text-[11px] text-slate-400 leading-relaxed">
               ESP32 + capacitive soil sensor + IRLZ44N MOSFET + 5V submersible water pump + battery power rail.
+            </p>
+          </div>
+
+          {/* Demonstration 3: Digital Logic Gate Circuit */}
+          <div
+            onClick={() => onLoadPreset('logic_gate')}
+            className="p-3 bg-[#161b24] hover:bg-[#1f2635] border border-[#232c3d] hover:border-emerald-500/40 rounded-lg cursor-pointer transition-all space-y-1.5 group"
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-slate-200 group-hover:text-emerald-300">
+                Digital Half-Adder (Gates)
+              </span>
+              <span className="text-[9px] px-1.5 py-0.5 bg-emerald-500/20 text-emerald-300 rounded font-mono">
+                ANSI/IEEE
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-400 leading-relaxed">
+              Exact XOR & AND gate symbols + dual SPDT logic switches + real-time logic state probes & live truth table.
             </p>
           </div>
         </div>
